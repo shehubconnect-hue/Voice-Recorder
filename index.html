@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emergency Audio Recorder</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+    button { font-size: 18px; padding: 10px 20px; margin: 10px; }
+    #status { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Emergency Audio Recorder</h1>
+  <button id="recordBtn">Start Recording</button>
+  <button id="stopBtn" disabled>Stop Recording</button>
+  <div id="status"></div>
+  <audio id="audioPlayback" controls style="margin-top:20px; display:none;"></audio>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+    const audioPlayback = document.getElementById('audioPlayback');
+
+    recordBtn.onclick = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support audio recording.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.start();
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstart = () => {
+        status.textContent = 'Recording...';
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        audioPlayback.style.display = 'none';
+        audioPlayback.src = '';
+      };
+
+      mediaRecorder.onstop = () => {
+        status.textContent = 'Recording stopped.';
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audioPlayback.src = audioUrl;
+        audioPlayback.style.display = 'block';
+
+        // Auto download the file for evidence
+        const a = document.createElement('a');
+        a.href = audioUrl;
+        a.download = 'emergency_recording.webm';
+        a.click();
+      };
+    };
+
+    stopBtn.onclick = () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    };
+  </script>
+</body>
+</html>
